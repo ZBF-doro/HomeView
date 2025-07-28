@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+{% block title %}房屋价格分析 - 链家网房屋数据分析系统{% endblock %}
+{% block content %}
+<style>
+:root {
+--primary-color: #3498db;
+--secondary-color: #2c3e50;
+--accent-color: #e74c3c;
+--light-color: #f8f9fa;
+--dark-color: #343a40;
+}
+.content {
+background-color: #f5f7fa;
+min-height: 100vh;
+padding: 20px;
+}
+.card {
+border-radius: 12px;
+box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+border: none;
+margin-bottom: 25px;
+}
+.card-header {
+background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+color: white;
+border-radius: 12px 12px 0 0 !important;
+padding: 15px 20px;
+font-weight: 600;
+}
+.chart-container {
+height: 400px;
+width: 100%;
+margin-top: 20px;
+background: white;
+border-radius: 10px;
+box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+padding: 15px;
+}
+.stats-card {
+background: white;
+border-radius: 10px;
+padding: 20px;
+text-align: center;
+box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+transition: transform 0.3s ease;
+}
+.stats-card:hover {
+transform: translateY(-5px);
+box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+.stats-value {
+font-size: 2rem;
+font-weight: 700;
+color: var(--primary-color);
+margin: 10px 0;
+}
+.stats-label {
+font-size: 0.9rem;
+color: var(--dark-color);
+text-transform: uppercase;
+letter-spacing: 1px;
+}
+.analysis-section {
+margin-bottom: 40px;
+}
+.section-title {
+font-size: 1.4rem;
+font-weight: 600;
+color: var(--secondary-color);
+margin-bottom: 20px;
+padding-bottom: 10px;
+border-bottom: 2px solid var(--primary-color);
+display: inline-block;
+}
+.loading-indicator {
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100%;
+font-size: 1.2rem;
+color: var(--primary-color);
+}
+.loading-spinner {
+width: 3rem;
+height: 3rem;
+margin-right: 10px;
+}
+.chart-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 15px;
+}
+.chart-title {
+font-size: 1.2rem;
+font-weight: 600;
+color: var(--secondary-color);
+}
+.filter-section {
+background: white;
+border-radius: 10px;
+padding: 15px;
+box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+margin-bottom: 20px;
+}
+</style>
+<div class="content">
+<div class="card">
+<div class="card-header">
+<h5><i class="fas fa-chart-line me-2"></i>房屋价格分析</h5>
+</div>
+<div class="card-body">
+<div class="row mb-4">
+<div class="col-md-3">
+<div class="stats-card">
+<div class="stats-icon">
+<i class="fas fa-home fa-2x text-primary"></i>
+</div>
+<div class="stats-value" id="total-houses">0</div>
+<div class="stats-label">房屋总数</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="stats-card">
+<div class="stats-icon">
+<i class="fas fa-dollar-sign fa-2x text-success"></i>
+</div>
+<div class="stats-value" id="avg-price">0</div>
+<div class="stats-label">平均价格 (元/㎡)</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="stats-card">
+<div class="stats-icon">
+<i class="fas fa-arrow-up fa-2x text-danger"></i>
+</div>
+<div class="stats-value" id="max-price">0</div>
+<div class="stats-label">最高价格 (元/㎡)</div>
+</div>
+</div>
+<div class="col-md-3">
+<div class="stats-card">
+<div class="stats-icon">
+<i class="fas fa-arrow-down fa-2x text-info"></i>
+</div>
+<div class="stats-value" id="min-price">0</div>
+<div class="stats-label">最低价格 (元/㎡)</div>
+</div>
+</div>
+</div>
+<div class="analysis-section">
+<h4 class="section-title"><i class="fas fa-map-marker-alt me-2"></i>区域价格分析</h4>
+<div class="chart-container">
+<div class="loading-indicator">
+<div class="spinner-border text-primary loading-spinner" role="status"></div>
+<span>正在加载区域价格数据...</span>
+</div>
+</div>
+</div>
+<div class="analysis-section">
+<h4 class="section-title"><i class="fas fa-chart-bar me-2"></i>价格分布分析</h4>
+<div class="chart-container">
+<div class="loading-indicator">
+<div class="spinner-border text-primary loading-spinner" role="status"></div>
+<span>正在加载价格分布数据...</span>
+</div>
+</div>
+</div>
+<div class="analysis-section">
+<h4 class="section-title"><i class="fas fa-expand-arrows-alt me-2"></i>面积与价格关系</h4>
+<div class="chart-container">
+<div class="loading-indicator">
+<div class="spinner-border text-primary loading-spinner" role="status"></div>
+<span>正在加载面积价格数据...</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+const regionChartEl = document.querySelectorAll('.chart-container')[0];
+const distributionChartEl = document.querySelectorAll('.chart-container')[1];
+const areaChartEl = document.querySelectorAll('.chart-container')[2];
+const regionChart = echarts.init(regionChartEl);
+const distributionChart = echarts.init(distributionChartEl);
+const areaChart = echarts.init(areaChartEl);
+fetch("{{ url_for('page.region_avg_price') }}")
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+const chartData = data.data;
+const regions = chartData.map(item => item.region);
+const avgPrices = chartData.map(item => item.avg_price);
+const houseCounts = chartData.map(item => item.house_count);
+const option = {
+tooltip: {
+trigger: 'axis',
+formatter: function(params) {
+const data = params[0].data;
+return `区域: ${data.region}<br>平均价格: ${data.avg_price} 元/㎡<br>房屋数量: ${data.house_count}`;
+}
+},
+grid: {
+left: '3%',
+right: '4%',
+bottom: '3%',
+containLabel: true
+},
+xAxis: {
+type: 'category',
+data: regions,
+axisLabel: {
+rotate: 45,
+interval: 0
+}
+},
+yAxis: {
+type: 'value',
+name: '价格 (元/㎡)',
+nameLocation: 'end',
+nameTextStyle: {
+padding: [0, 0, 0, 30]
+}
+},
+series: [
+{
+name: '平均价格',
+type: 'bar',
+data: chartData.map(item => {
+return {
+value: item.avg_price,
+region: item.region,
+house_count: item.house_count
+};
+}),
+itemStyle: {
+color: function(params) {
+const colorList = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'];
+return colorList[params.dataIndex % colorList.length];
+}
+},
+label: {
+show: true,
+position: 'top',
+formatter: '{c} 元/㎡'
+}
+}
+]
+};
+regionChart.setOption(option);
+regionChartEl.querySelector('.loading-indicator').style.display = 'none';
+} else {
+regionChartEl.querySelector('.loading-indicator').innerHTML =
+`<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.message}</div>`;
+}
+})
+.catch(error => {
+console.error('区域价格数据获取失败:', error);
+regionChartEl.querySelector('.loading-indicator').innerHTML =
+`<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>数据加载失败，请重试</div>`;
+});
+fetch("{{ url_for('page.price_distribution_api') }}")
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+const chartData = data.data;
+const stats = data.stats;
+document.getElementById('total-houses').textContent = stats.total_houses;
+document.getElementById('avg-price').textContent = stats.avg_price;
+document.getElementById('max-price').textContent = stats.max_price;
+document.getElementById('min-price').textContent = stats.min_price;
+const priceRanges = chartData.map(item => item.price_range);
+const counts = chartData.map(item => item.count);
+const option = {
+tooltip: {
+trigger: 'axis',
+formatter: '{b}: {c} 套'
+},
+grid: {
+left: '3%',
+right: '4%',
+bottom: '3%',
+containLabel: true
+},
+xAxis: {
+type: 'category',
+data: priceRanges,
+name: '价格区间 (元/㎡)',
+axisLabel: {
+rotate: 45
+}
+},
+yAxis: {
+type: 'value',
+name: '房屋数量'
+},
+series: [
+{
+name: '房屋数量',
+type: 'bar',
+data: counts,
+itemStyle: {
+color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+{ offset: 0, color: '#83bff6' },
+{ offset: 0.5, color: '#188df0' },
+{ offset: 1, color: '#188df0' }
+])
+},
+emphasis: {
+itemStyle: {
+color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+{ offset: 0, color: '#2378f7' },
+{ offset: 0.7, color: '#2378f7' },
+{ offset: 1, color: '#83bff6' }
+])
+}
+}
+}
+]
+};
+distributionChart.setOption(option);
+distributionChartEl.querySelector('.loading-indicator').style.display = 'none';
+} else {
+distributionChartEl.querySelector('.loading-indicator').innerHTML =
+`<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.message}</div>`;
+}
+})
+.catch(error => {
+console.error('价格分布数据获取失败:', error);
+distributionChartEl.querySelector('.loading-indicator').innerHTML =
+`<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>数据加载失败，请重试</div>`;
+});
+fetch("{{ url_for('page.area_price') }}")
+.then(response => response.json())
+.then(data => {
+if (data.success) {
+const chartData = data.data;
+const areas = chartData.map(item => item.area);
+const prices = chartData.map(item => item.price);
+const option = {
+tooltip: {
+trigger: 'axis',
+formatter: function(params) {
+const data = params[0].data;
+return `面积: ${data[0].toFixed(1)} ㎡<br>价格: ${data[1]} 元/㎡`;
+}
+},
+grid: {
+left: '3%',
+right: '4%',
+bottom: '3%',
+containLabel: true
+},
+xAxis: {
+type: 'value',
+name: '面积 (㎡)',
+nameLocation: 'end'
+},
+yAxis: {
+type: 'value',
+name: '价格 (元/㎡)',
+nameLocation: 'end'
+},
+series: [
+{
+name: '面积-价格',
+type: 'scatter',
+symbolSize: 8,
+data: chartData.map(item => [item.area, item.price]),
+itemStyle: {
+color: function(params) {
+const maxPrice = Math.max(...prices);
+const minPrice = Math.min(...prices);
+const priceRange = maxPrice - minPrice;
+const priceRatio = (params.data[1] - minPrice) / priceRange;
+const r = Math.floor(255 * priceRatio);
+const g = Math.floor(100 * (1 - priceRatio));
+const b = Math.floor(255 * (1 - priceRatio));
+return `rgb(${r}, ${g}, ${b})`;
+}
+}
+}
+]
+};
+areaChart.setOption(option);
+areaChartEl.querySelector('.loading-indicator').style.display = 'none';
+} else {
+areaChartEl.querySelector('.loading-indicator').innerHTML =
+`<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.message}</div>`;
+}
+})
+.catch(error => {
+console.error('面积价格关系数据获取失败:', error);
+areaChartEl.querySelector('.loading-indicator').innerHTML =
+`<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>数据加载失败，请重试</div>`;
+});
+window.addEventListener('resize', function() {
+regionChart.resize();
+distributionChart.resize();
+areaChart.resize();
+});
+});
+</script>
+{% endblock %}

@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}房屋类型分析 - 房屋数据分析系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-th-large me-2"></i>房屋类型分析</h1>
+    <p class="text-muted">不同房屋类型的分布及价格分析</p>
+</div>
+
+<div class="row">
+    <!-- 统计卡片 -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card primary">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            总房屋数量
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-houses">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-home fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            房屋类型数量
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="type-count">0</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-th fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card warning">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            平均价格
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="avg-price">0 元/㎡</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-yen-sign fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card danger">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                            最贵类型价格
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="max-price-type">--</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-tag fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 图表区域 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">房屋类型数量分布</h5>
+                <div class="form-group form-sm">
+                    <select class="form-control" id="type-chart-type">
+                        <option value="bar">柱状图</option>
+                        <option value="pie">饼图</option>
+                        <option value="doughnut">环形图</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="type-count-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">房屋类型平均价格</h5>
+                <div class="form-group form-sm">
+                    <select class="form-control" id="price-chart-type">
+                        <option value="bar">柱状图</option>
+                        <option value="line">折线图</option>
+                        <option value="radar">雷达图</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="type-price-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 数据表格 -->
+    <div class="col-lg-12 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">房屋类型详细数据</h5>
+                <div class="form-group form-sm">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="table-search" placeholder="搜索类型...">
+                        <div class="input-group-append">
+                            <button class="btn btn-light" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>房屋类型</th>
+                                <th>房屋数量</th>
+                                <th>平均价格 (元/㎡)</th>
+                                <th>价格范围</th>
+                                <th>占比</th>
+                            </tr>
+                        </thead>
+                        <tbody id="type-table-body">
+                            <!-- 数据将通过JavaScript动态填充 -->
+                            <tr>
+                                <td colspan="5" class="text-center">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取房屋类型统计数据
+        fetch('/api/type_analysis/type_stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderTypeAnalysis(data.data);
+                } else {
+                    showError('获取房屋类型数据失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                showError('网络错误: ' + error.message);
+            });
+    });
+
+    // 渲染房屋类型分析数据
+    function renderTypeAnalysis(typeData) {
+        // 统计数据
+        const totalHouses = typeData.reduce((sum, type) => sum + type.count, 0);
+        const typeCount = typeData.length;
+        const avgPrice = typeData.reduce((sum, type) => sum + (type.avg_price * type.count), 0) / totalHouses;
+        
+        // 设置统计卡片数据
+        document.getElementById('total-houses').textContent = totalHouses;
+        document.getElementById('type-count').textContent = typeCount;
+        document.getElementById('avg-price').textContent = avgPrice.toFixed(2) + ' 元/㎡';
+        
+        // 找到最贵的房屋类型
+        const maxPriceType = typeData.reduce((max, type) => 
+            type.avg_price > max.avg_price ? type : max, 
+            { avg_price: 0 }
+        );
+        if (maxPriceType.avg_price > 0) {
+            document.getElementById('max-price-type').textContent = 
+                `${maxPriceType.type} - ${maxPriceType.avg_price.toFixed(2)} 元/㎡`;
+        }
+        
+        // 计算每种类型的占比
+        typeData.forEach(type => {
+            type.percentage = ((type.count / totalHouses) * 100).toFixed(1);
+        });
+        
+        // 渲染类型数量图表
+        renderTypeCountChart(typeData);
+        
+        // 渲染类型价格图表
+        renderTypePriceChart(typeData);
+        
+        // 渲染数据表格
+        renderTypeTable(typeData);
+    }
+
+    // 渲染房屋类型数量图表
+    function renderTypeCountChart(typeData) {
+        const ctx = document.getElementById('type-count-chart').getContext('2d');
+        
+        // 准备图表数据
+        const labels = typeData.map(type => type.type);
+        const data = typeData.map(type => type.count);
+        const backgroundColor = [
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(255, 206, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(153, 102, 255, 0.7)',
+            'rgba(255, 159, 64, 0.7)',
+            'rgba(128, 0, 128, 0.7)',
+            'rgba(255, 0, 0, 0.7)',
+            'rgba(0, 128, 0, 0.7)',
+            'rgba(0, 0, 255, 0.7)'
+        ];
+        
+        // 初始化图表
+        const chartType = document.getElementById('type-chart-type').value;
+        let chart;
+        
+        if (chartType === 'pie' || chartType === 'doughnut') {
+            chart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColor,
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(128, 0, 128, 1)',
+                            'rgba(255, 0, 0, 1)',
+                            'rgba(0, 128, 0, 1)',
+                            'rgba(0, 0, 255, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        title: {
+                            display: true,
+                            text: '房屋类型数量分布'
+                        }
+                    }
+                }
+            });
+        } else {
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '房屋数量',
+                        data: data,
+                        backgroundColor: backgroundColor,
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(128, 0, 128, 1)',
+                            'rgba(255, 0, 0, 1)',
+                            'rgba(0, 128, 0, 1)',
+                            'rgba(0, 0, 255, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: '房屋类型数量分布'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 图表类型切换事件
+        document.getElementById('type-chart-type').addEventListener('change', function() {
+            chart.destroy();
+            renderTypeCountChart(typeData);
+        });
+    }
+
+    // 渲染房屋类型价格图表
+    function renderTypePriceChart(typeData) {
+        const ctx = document.getElementById('type-price-chart').getContext('2d');
+        
+        // 准备图表数据
+        const labels = typeData.map(type => type.type);
+        const data = typeData.map(type => type.avg_price);
+        
+        // 初始化图表
+        const chartType = document.getElementById('price-chart-type').value;
+        let chart;
+        
+        if (chartType === 'line') {
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '平均价格 (元/㎡)',
+                        data: data,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: '房屋类型平均价格'
+                        }
+                    }
+                }
+            });
+        } else if (chartType === 'radar') {
+            chart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '平均价格 (元/㎡)',
+                        data: data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(54, 162, 235, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: Math.max(...data) * 1.2
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: '房屋类型平均价格雷达图'
+                        }
+                    }
+                }
+            });
+        } else {
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '平均价格 (元/㎡)',
+                        data: data,
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: '房屋类型平均价格'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 图表类型切换事件
+        document.getElementById('price-chart-type').addEventListener('change', function() {
+            chart.destroy();
+            renderTypePriceChart(typeData);
+        });
+    }
+
+    function renderTypeTable(typeData) {
+    const tableBody = document.getElementById('type-table-body');
+    tableBody.innerHTML = '';
+
+    if (typeData.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" class="text-center">没有找到房屋类型数据</td></tr>';
+        return;
+    }
+
+    typeData.forEach(type => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${type.type}</td>
+            <td>${type.count}</td>
+            <td>${type.avg_price.toFixed(2)} 元/㎡</td>
+            <td>${type.price_range || '--'}</td>
+            <td>${type.percentage}%</td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    // 表格搜索功能（保持不变）
+    document.getElementById('table-search').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = tableBody.querySelectorAll('tr');
+        rows.forEach(row => {
+            const typeCell = row.querySelector('td:first-child');
+            if (typeCell) {
+                const typeText = typeCell.textContent.toLowerCase();
+                row.style.display = typeText.includes(searchTerm) ? '' : 'none';
+            }
+        });
+    });
+}
+
+    // 显示错误信息
+    function showError(message) {
+        console.error(message);
+        // 这里可以添加显示错误提示的逻辑
+    }
+</script>
+{% endblock %}

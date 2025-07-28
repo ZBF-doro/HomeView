@@ -1,0 +1,159 @@
+{% extends "index.html" %}
+
+{% block content %}
+    <div class="content">
+        <div class="card">
+            <div class="card-header">
+                <h5>房价预测</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <form method="POST">
+                            <div class="form-group">
+                                <label for="area">房屋面积(㎡)</label>
+                                <input type="number" class="form-control" id="area" name="area" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="city">城市</label>
+                                <select class="form-control" id="city" name="city" required>
+                                    {% for city in cities %}
+                                    <option value="{{ city }}">{{ city }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="house_type">户型</label>
+                                <select class="form-control" id="house_type" name="house_type" required>
+                                    {% for house_type in house_types %}
+                                    <option value="{{ house_type }}">{{ house_type }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="floor">楼层</label>
+                                <select class="form-control" id="floor" name="floor" required>
+                                    {% for floor in floors %}
+                                    <option value="{{ floor }}">{{ floor }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="orientation">朝向</label>
+                                <select class="form-control" id="orientation" name="orientation" required>
+                                    {% for orientation in orientations %}
+                                    <option value="{{ orientation }}">{{ orientation }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="decoration">装修</label>
+                                <select class="form-control" id="decoration" name="decoration" required>
+                                    {% for decoration in decorations %}
+                                    <option value="{{ decoration }}">{{ decoration }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary mt-3">预测房价</button>
+                        </form>
+                    </div>
+
+                    <div class="col-md-6">
+                        {% if prediction %}
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-primary">预测结果</h3>
+                                <div class="display-4 my-4">
+                                    {{ "%.2f"|format(prediction) }} 万元
+                                </div>
+                                <p class="text-muted">基于您提供的房屋特征和机器学习模型预测</p>
+
+                                <div class="mt-4">
+                                    <h5>价格影响因素分析</h5>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 35%" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100">
+                                            面积 (35%)
+                                        </div>
+                                    </div>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
+                                            城市 (25%)
+                                        </div>
+                                    </div>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 20%" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+                                            户型 (20%)
+                                        </div>
+                                    </div>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-danger" role="progressbar" style="width: 15%" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100">
+                                            楼层 (15%)
+                                        </div>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-secondary" role="progressbar" style="width: 5%" aria-valuenow="5" aria-valuemin="0" aria-valuemax="100">
+                                            其他 (5%)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="card bg-light h-100">
+                            <div class="card-body text-center d-flex flex-column justify-content-center">
+                                <i class="fa fa-home fa-5x text-muted mb-4"></i>
+                                <p class="lead">输入房屋特征，获取预测价格</p>
+                                <p class="text-muted">我们使用先进的机器学习模型，基于历史数据为您提供准确的房价预测</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>相似房屋参考</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>小区名称</th>
+                                <th>面积(㎡)</th>
+                                <th>户型</th>
+                                <th>楼层</th>
+                                <th>朝向</th>
+                                <th>装修</th>
+                                <th>实际价格(万)</th>
+                                <th>价格差异(%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for similar_house in similar_houses %}
+                            <tr>
+                                <td>{{ similar_house.community }}</td>
+                                <td>{{ similar_house.area }}</td>
+                                <td>{{ similar_house.house_type }}</td>
+                                <td>{{ similar_house.floor }}</td>
+                                <td>{{ similar_house.orientation }}</td>
+                                <td>{{ similar_house.decoration }}</td>
+                                <td>{{ similar_house.price }}</td>
+                                <td>{{ similar_house.price_diff|round(2) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

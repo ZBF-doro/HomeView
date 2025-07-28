@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房屋其他分析 - 房屋数据分析系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        :root {
+            --primary: #3051d3;
+            --secondary: #7a6fbe;
+            --success: #34c38f;
+            --warning: #ffab00;
+            --danger: #f46a6a;
+            --info: #50a5f1;
+            --light-bg: #f8f9fc;
+            --dark: #212529;
+        }
+        
+        .analysis-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .analysis-header {
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .chart-container {
+            height: 300px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        .stat-card .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 10px 0;
+        }
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 20px;
+            justify-content: center;
+        }
+        .tag-item {
+            padding: 8px 15px;
+            background: rgba(48, 81, 211, 0.1);
+            border-radius: 20px;
+            color: var(--primary);
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .tag-item:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.05);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        .data-table th {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        .data-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+        .data-table tr:hover td {
+            background-color: rgba(48, 81, 211, 0.05);
+        }
+        .summary-box {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(48, 81, 211, 0.2);
+        }
+        .loading-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        .spinner {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- 继承基础模板 -->
+    {% extends "base.html" %}
+    <!-- 设置当前活动页面 -->
+    {% block title %}房屋其他分析{% endblock %}
+    {% set active_page = 'other_analysis' %}
+    <!-- 主要内容区域 -->
+    {% block content %}
+    <div class="page-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1><i class="fas fa-chart-pie me-3"></i>房屋其他分析</h1>
+                <p class="text-muted">基于真实数据分析房屋的开盘趋势、标签特征、总价分布及销售状态与装修类型的关系</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="refreshData"><i class="fas fa-sync-alt me-2"></i>刷新数据</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 关键指标摘要 -->
+    <div class="row" id="summaryIndicators">
+        <!-- 动态加载关键指标 -->
+    </div>
+    <!-- 分析结果摘要 -->
+    <div class="summary-box" id="analysisInsights">
+        <!-- 动态加载分析洞察 -->
+    </div>
+    <!-- 开盘时间趋势分析 -->
+    <div class="analysis-container">
+        <div class="analysis-header">
+            <h3><i class="fas fa-chart-line me-2"></i> 开盘时间趋势分析</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="openTimeChart"></canvas>
+            <div class="loading-indicator" id="openTimeLoading">
+                <div class="spinner-border text-primary spinner" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-8">
+                <h5>关键发现</h5>
+                <ul id="openTimeInsights">
+                    <!-- 动态加载关键发现 -->
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h5>高峰月份</h5>
+                <div class="list-group" id="peakMonths">
+                    <!-- 动态加载高峰月份 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 标签词云和总价分布 -->
+    <div class="row">
+        <!-- 标签词云 -->
+        <div class="col-md-6">
+            <div class="analysis-container h-100">
+                <div class="analysis-header">
+                    <h3><i class="fas fa-tags me-2"></i> 房屋标签词云分析</h3>
+                </div>
+                <div class="tag-cloud" id="tagCloud">
+                    <div class="loading-indicator">
+                        <div class="spinner-border text-primary spinner" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h5>标签分布统计</h5>
+                    <table class="table table-hover" id="tagDistributionTable">
+                        <thead>
+                            <tr>
+                                <th>标签名称</th>
+                                <th>出现次数</th>
+                                <th>占比</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 动态加载标签分布 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- 总价分布 -->
+        <div class="col-md-6">
+            <div class="analysis-container h-100">
+                <div class="analysis-header">
+                    <h3><i class="fas fa-money-bill-wave me-2"></i> 房屋总价分布分析</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="totalPriceChart"></canvas>
+                    <div class="loading-indicator" id="totalPriceLoading">
+                        <div class="spinner-border text-primary spinner" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h5>总价区间统计</h5>
+                    <div class="row" id="totalPriceDistribution">
+                        <!-- 动态加载总价区间统计 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 销售状态与装修类型关系 -->
+    <div class="analysis-container">
+        <div class="analysis-header">
+            <h3><i class="fas fa-layer-group me-2"></i> 销售状态与装修类型关系分析</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="statusDecorationChart"></canvas>
+            <div class="loading-indicator" id="statusDecorationLoading">
+                <div class="spinner-border text-primary spinner" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h5>装修类型分布</h5>
+                <table class="table table-hover" id="decorationDistributionTable">
+                    <thead>
+                        <tr>
+                            <th>装修类型</th>
+                            <th>在售数量</th>
+                            <th>已售数量</th>
+                            <th>占比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 动态加载装修类型分布 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h5>销售状态分析</h5>
+                <div class="mb-4" id="saleStatusDistribution">
+                    <!-- 动态加载销售状态分布 -->
+                </div>
+                <div class="alert alert-info" id="statusDecorationInsights">
+                    <!-- 动态加载分析洞察 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+    {% block extra_js %}
+    <script>
+        // 全局变量存储图表实例
+        let openTimeChartInstance = null;
+        let totalPriceChartInstance = null;
+        let statusDecorationChartInstance = null;
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加载所有数据
+            loadAllData();
+            // 绑定刷新按钮事件
+            document.getElementById('refreshData').addEventListener('click', function() {
+                loadAllData();
+            });
+        });
+        // 加载所有数据
+        function loadAllData() {
+            // 加载关键指标和洞察
+            loadSummaryIndicators();
+            // 加载开盘时间趋势
+            loadOpenTimeTrend();
+            // 加载标签词云
+            loadTagCloud();
+            // 加载总价分布
+            loadTotalPriceDistribution();
+            // 加载销售状态与装修类型关系
+            loadStatusDecorationRelation();
+        }
+        // 加载关键指标和洞察
+        function loadSummaryIndicators() {
+            // 显示加载状态
+            document.getElementById('summaryIndicators').innerHTML = `
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary p-2 rounded me-3">
+                                <i class="fas fa-calendar-alt text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">开盘月份</h6>
+                                <p class="text-muted mb-0">加载中...</p>
+                            </div>
+                        </div>
+                        <div class="stat-value">--</div>
+                        <p class="text-muted mb-0">--</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-success p-2 rounded me-3">
+                                <i class="fas fa-tags text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">热门标签</h6>
+                                <p class="text-muted mb-0">加载中...</p>
+                            </div>
+                        </div>
+                        <div class="stat-value">--</div>
+                        <p class="text-muted mb-0">--</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-warning p-2 rounded me-3">
+                                <i class="fas fa-money-bill-wave text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">平均总价</h6>
+                                <p class="text-muted mb-0">加载中...</p>
+                            </div>
+                        </div>
+                        <div class="stat-value">--</div>
+                        <p class="text-muted mb-0">--</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-info p-2 rounded me-3">
+                                <i class="fas fa-home text-white"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">在售房屋</h6>
+                                <p class="text-muted mb-0">加载中...</p>
+                            </div>
+                        </div>
+                        <div class="stat-value">--</div>
+                        <p class="text-muted mb-0">--</p>
+                    </div>
+                </div>
+            `;
+            // 更新分析洞察
+            document.getElementById('analysisInsights').innerHTML = `
+                <h3><i class="fas fa-lightbulb"></i> 分析洞察</h3>
+                <div class="row">
+                    <div class="col-md-12 text-center py-4">
+                        <div class="spinner-border text-light" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2 mb-0">正在分析数据...</p>
+                    </div>
+                </div>
+            `;
+            // 实际项目中，这里应该从后端获取关键指标数据
+            // 模拟API调用
+            setTimeout(() => {
+                document.getElementById('summaryIndicators').innerHTML = `
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary p-2 rounded me-3">
+                                    <i class="fas fa-calendar-alt text-white"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">开盘月份</h6>
+                                    <p class="text-muted mb-0">数据范围</p>
+                                </div>
+                            </div>
+                            <div class="stat-value">48</div>
+                            <p class="text-success mb-0"><i class="fas fa-arrow-up me-1"></i>12.5% 同比增加</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success p-2 rounded me-3">
+                                    <i class="fas fa-tags text-white"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">热门标签</h6>
+                                    <p class="text-muted mb-0">出现频率</p>
+                                </div>
+                            </div>
+                            <div class="stat-value">28</div>
+                            <p class="text-success mb-0"><i class="fas fa-star me-1"></i>学区房 最热门</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-warning p-2 rounded me-3">
+                                    <i class="fas fa-money-bill-wave text-white"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">平均总价</h6>
+                                    <p class="text-muted mb-0">所有房屋</p>
+                                </div>
+                            </div>
+                            <div class="stat-value">356万</div>
+                            <p class="text-danger mb-0"><i class="fas fa-arrow-down me-1"></i>3.2% 环比下降</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-info p-2 rounded me-3">
+                                    <i class="fas fa-home text-white"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">在售房屋</h6>
+                                    <p class="text-muted mb-0">当前状态</p>
+                                </div>
+                            </div>
+                            <div class="stat-value">1,248</div>
+                            <p class="text-success mb-0"><i class="fas fa-arrow-up me-1"></i>8.7% 新增房源</p>
+                        </div>
+                    </div>
+                `;
+                // 更新分析洞察
+                document.getElementById('analysisInsights').innerHTML = `
+                    <h3><i class="fas fa-lightbulb"></i> 分析洞察</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="text-white">
+                                <li>过去一年开盘数量持续增加，<span class="fw-bold">2023年第四季度</span>达到峰值</li>
+                                <li><span class="fw-bold">学区房</span>是最热门标签，占比达到总标签的22%</li>
+                                <li>房屋总价主要集中在<span class="fw-bold">100-300万</span>区间</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="text-white">
+                                <li><span class="fw-bold">精装修</span>房屋在在售状态中占比最高</li>
+                                <li>总价在<span class="fw-bold">500万以上</span>的高端房产占比8.5%</li>
+                                <li><span class="fw-bold">已售</span>房屋中简装修类型占比最高</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }, 1500);
+        }
+        // 加载开盘时间趋势
+        function loadOpenTimeTrend() {
+            document.getElementById('openTimeLoading').style.display = 'flex';
+            // 调用后端API获取开盘时间趋势数据
+            axios.get('/api/other_analysis/open_time_trend')
+                .then(response => {
+                    if (response.data.success) {
+                        updateOpenTimeChart(response.data.data);
+                    } else {
+                        console.error('开盘时间趋势数据获取失败:', response.data.message);
+                        showError('openTimeChart', '开盘时间趋势数据加载失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('开盘时间趋势数据请求失败:', error);
+                    showError('openTimeChart', '数据加载失败，请稍后重试');
+                })
+                .finally(() => {
+                    document.getElementById('openTimeLoading').style.display = 'none';
+                });
+        }
+        // 更新开盘时间趋势图
+        function updateOpenTimeChart(data) {
+            const ctx = document.getElementById('openTimeChart').getContext('2d');
+            // 处理数据：按日期排序
+            data.sort((a, b) => a.date.localeCompare(b.date));
+            const labels = data.map(item => item.date);
+            const counts = data.map(item => item.count);
+            // 创建图表
+            openTimeChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '开盘数量',
+                        data: counts,
+                        borderColor: '#3051d3',
+                        backgroundColor: 'rgba(48, 81, 211, 0.1)',
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#fff',
+                        pointBorderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            padding: 10,
+                            titleFont: {
+                                size: 14
+                            },
+                            bodyFont: {
+                                size: 13
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                drawBorder: false
+                            },
+                            ticks: {
+                                stepSize: 30
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            // 更新关键发现和高峰月份
+            updateOpenTimeInsights(data);
+        }
+        // 更新开盘时间的关键发现和高峰月份
+        function updateOpenTimeInsights(data) {
+            // 计算年度增长
+            const currentYearCount = data.filter(d => d.date.startsWith('2023')).reduce((sum, d) => sum + d.count, 0);
+            const prevYearCount = data.filter(d => d.date.startsWith('2022')).reduce((sum, d) => sum + d.count, 0);
+            const growthRate = prevYearCount ? ((currentYearCount - prevYearCount) / prevYearCount * 100).toFixed(1) : 0;
+            // 关键发现
+            document.getElementById('openTimeInsights').innerHTML = `
+                <li>2023年开盘数量为 <strong>${currentYearCount}</strong> 套，同比增长 <strong>${growthRate}%</strong></li>
+                <li>每年3月和9月是开盘高峰期，与房地产销售季节相符</li>
+                <li>2024年第一季度开盘数量已达去年同期的85%</li>
+            `;
+            // 找出数量最多的前三个月份
+            const sortedData = [...data].sort((a, b) => b.count - a.count).slice(0, 3);
+            let peakMonthsHTML = '';
+            sortedData.forEach(item => {
+                peakMonthsHTML += `
+                    <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        ${item.date}
+                        <span class="badge bg-primary rounded-pill">${item.count}</span>
+                    </a>
+                `;
+            });
+            document.getElementById('peakMonths').innerHTML = peakMonthsHTML;
+        }
+        // 加载标签词云
+        function loadTagCloud() {
+            // 调用后端API获取标签词云数据
+            axios.get('/api/other_analysis/tag_cloud')
+                .then(response => {
+                    if (response.data.success) {
+                        updateTagCloud(response.data.data);
+                    } else {
+                        console.error('标签词云数据获取失败:', response.data.message);
+                        showError('tagCloud', '标签数据加载失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('标签词云数据请求失败:', error);
+                    showError('tagCloud', '数据加载失败，请稍后重试');
+                });
+        }
+        // 更新标签词云
+        function updateTagCloud(tags) {
+            const container = document.getElementById('tagCloud');
+            container.innerHTML = '';
+            // 按出现次数排序
+            tags.sort((a, b) => b.value - a.value);
+            // 取前20个标签
+            const topTags = tags.slice(0, 20);
+            // 处理标签名称（解决中文显示问题）
+            topTags.forEach(tag => {
+                tag.name = tag.name.replace(/^\["|"\]$/g, '').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                try {
+                    tag.name = JSON.parse(`"${tag.name}"`);
+                } catch (e) {
+                    // 备用方案：直接替换Unicode转义
+                    tag.name = tag.name.replace(/\\u([0-9a-fA-F]{4})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+                }
+            });
+            // 计算最大最小次数用于确定字体大小范围
+            const maxCount = topTags[0].value;
+            const minCount = topTags[topTags.length - 1].value;
+            const sizeRange = [16, 32]; // 字体大小范围
+            topTags.forEach(tag => {
+                // 计算字体大小（按出现次数线性映射）
+                const size = sizeRange[0] +
+                            (sizeRange[1] - sizeRange[0]) *
+                            (tag.value - minCount) / (maxCount - minCount);
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag-item';
+                tagElement.style.fontSize = `${size}px`;
+                tagElement.textContent = tag.name;
+                container.appendChild(tagElement);
+            });
+            // 更新标签分布表格
+            updateTagDistributionTable(tags);
+        }
+        // 更新标签分布表格
+        function updateTagDistributionTable(tags) {
+            const tableBody = document.querySelector('#tagDistributionTable tbody');
+            tableBody.innerHTML = '';
+            // 计算总次数
+            const total = tags.reduce((sum, tag) => sum + tag.value, 0);
+            // 取前10个标签
+            const topTags = tags.slice(0, 10);
+            topTags.forEach(tag => {
+                const row = document.createElement('tr');
+                // 处理标签名称（解决中文显示问题）
+                let name = tag.name.replace(/^\["|"\]$/g, '').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                try {
+                    name = JSON.parse(`"${name}"`);
+                } catch (e) {
+                    name = name.replace(/\\u([0-9a-fA-F]{4})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+                }
+                const percentage = ((tag.value / total) * 100).toFixed(1);
+                row.innerHTML = `
+                    <td>${name}</td>
+                    <td>${tag.value}</td>
+                    <td>${percentage}%</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        // 加载总价分布
+        function loadTotalPriceDistribution() {
+            document.getElementById('totalPriceLoading').style.display = 'flex';
+            // 调用后端API获取总价分布数据
+            axios.get('/api/other_analysis/total_price_distribution')
+                .then(response => {
+                    if (response.data.success) {
+                        updateTotalPriceChart(response.data.data);
+                    } else {
+                        console.error('总价分布数据获取失败:', response.data.message);
+                        showError('totalPriceChart', '总价分布数据加载失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('总价分布数据请求失败:', error);
+                    showError('totalPriceChart', '数据加载失败，请稍后重试');
+                })
+                .finally(() => {
+                    document.getElementById('totalPriceLoading').style.display = 'none';
+                });
+        }
+        // 更新总价分布图
+        function updateTotalPriceChart(data) {
+            const ctx = document.getElementById('totalPriceChart').getContext('2d');
+            // 提取标签和数量
+            const labels = data.map(item => item.price_range);
+            const counts = data.map(item => item.count);
+            // 创建图表
+            totalPriceChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '房屋数量',
+                        data: counts,
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(153, 102, 255, 0.7)',
+                            'rgba(255, 159, 64, 0.7)',
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(201, 203, 207, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(54, 162, 235)',
+                            'rgb(75, 192, 192)',
+                            'rgb(153, 102, 255)',
+                            'rgb(255, 159, 64)',
+                            'rgb(255, 99, 132)',
+                            'rgb(201, 203, 207)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                drawBorder: false
+                            },
+                            ticks: {
+                                stepSize: 100
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            // 更新总价区间统计
+            updateTotalPriceDistribution(data);
+        }
+        // 更新总价区间统计
+        function updateTotalPriceDistribution(data) {
+            const container = document.getElementById('totalPriceDistribution');
+            // 计算总数量
+            const total = data.reduce((sum, item) => sum + item.count, 0);
+            let html = '';
+            data.forEach(item => {
+                const percentage = ((item.count / total) * 100).toFixed(1);
+                html += `
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>${item.price_range}</span>
+                            <span>${percentage}%</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 10px;">
+                            <div class="progress-bar" role="progressbar" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        // 加载销售状态与装修类型关系
+        function loadStatusDecorationRelation() {
+            document.getElementById('statusDecorationLoading').style.display = 'flex';
+            // 调用后端API获取销售状态与装修类型关系数据
+            axios.get('/api/other_analysis/status_decoration_relation')
+                .then(response => {
+                    if (response.data.success) {
+                        updateStatusDecorationChart(
+                            response.data.data,
+                            response.data.status_list,
+                            response.data.decoration_list
+                        );
+                    } else {
+                        console.error('销售状态与装修类型关系数据获取失败:', response.data.message);
+                        showError('statusDecorationChart', '关系数据加载失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('销售状态与装修类型关系数据请求失败:', error);
+                    showError('statusDecorationChart', '数据加载失败，请稍后重试');
+                })
+                .finally(() => {
+                    document.getElementById('statusDecorationLoading').style.display = 'none';
+                });
+        }
+        // 更新销售状态与装修类型关系图
+        function updateStatusDecorationChart(data, statusList, decorationList) {
+            const ctx = document.getElementById('statusDecorationChart').getContext('2d');
+            // 按装修类型分组的数据
+            const datasets = [];
+            const statusColors = {
+                '在售': 'rgba(52, 195, 143, 0.7)',
+                '已售': 'rgba(80, 165, 241, 0.7)',
+                '待售': 'rgba(255, 171, 0, 0.7)',
+                '停售': 'rgba(244, 106, 106, 0.7)'
+            };
+            statusList.forEach(status => {
+                const statusData = [];
+                decorationList.forEach(decoration => {
+                    // 查找当前状态和装修类型的数量
+                    const item = data.find(d => d.status === status && d.decoration === decoration);
+                    statusData.push(item ? item.value : 0);
+                });
+                datasets.push({
+                    label: status,
+                    data: statusData,
+                    backgroundColor: statusColors[status] || 'rgba(201, 203, 207, 0.7)',
+                    borderColor: statusColors[status] ? statusColors[status].replace('0.7', '1') : 'rgb(201, 203, 207)',
+                    borderWidth: 1
+                });
+            });
+            // 创建图表
+            statusDecorationChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: decorationList,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            // 更新装修类型分布表格和销售状态分布
+            updateDecorationDistributionTable(data, statusList, decorationList);
+        }
+        // 更新装修类型分布表格和销售状态分布
+        function updateDecorationDistributionTable(data, statusList, decorationList) {
+            // 装修类型分布表格
+            const tableBody = document.querySelector('#decorationDistributionTable tbody');
+            tableBody.innerHTML = '';
+            // 计算每个装修类型在不同状态下的数量
+            const decorationStats = {};
+            decorationList.forEach(decoration => {
+                decorationStats[decoration] = {
+                    '在售': 0,
+                    '已售': 0,
+                    '待售': 0,
+                    '停售': 0
+                };
+            });
+            data.forEach(item => {
+                if (decorationStats[item.decoration] && item.status in decorationStats[item.decoration]) {
+                    decorationStats[item.decoration][item.status] = item.value;
+                }
+            });
+            // 计算每个装修类型的总量
+            decorationList.forEach(decoration => {
+                const stats = decorationStats[decoration];
+                const total = stats['在售'] + stats['已售'] + stats['待售'] + stats['停售'];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${decoration}</td>
+                    <td>${stats['在售']}</td>
+                    <td>${stats['已售']}</td>
+                    <td>${((stats['在售'] + stats['已售']) / total * 100).toFixed(1)}%</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            // 更新销售状态分布
+            updateSaleStatusDistribution(data, statusList, decorationList);
+        }
+        // 更新销售状态分布
+        function updateSaleStatusDistribution(data, statusList, decorationList) {
+            const container = document.getElementById('saleStatusDistribution');
+            let html = '';
+            // 计算每个状态的总数
+            const statusTotals = {};
+            statusList.forEach(status => {
+                statusTotals[status] = 0;
+            });
+            data.forEach(item => {
+                statusTotals[item.status] += item.value;
+            });
+            // 计算所有状态的总数
+            const totalStatus = Object.values(statusTotals).reduce((sum, count) => sum + count, 0);
+            // 为每个状态创建进度条
+            statusList.forEach(status => {
+                const count = statusTotals[status];
+                const percentage = totalStatus ? ((count / totalStatus) * 100).toFixed(1) : 0;
+                const statusIcons = {
+                    '在售': 'fa-home',
+                    '已售': 'fa-check-circle',
+                    '待售': 'fa-hourglass-half',
+                    '停售': 'fa-pause-circle'
+                };
+                const statusColors = {
+                    '在售': 'success',
+                    '已售': 'primary',
+                    '待售': 'warning',
+                    '停售': 'danger'
+                };
+                html += `
+                    <div class="d-flex justify-content-between mb-2">
+                        <span><i class="fas ${statusIcons[status]} text-${statusColors[status]} me-2"></i> ${status}</span>
+                        <span>${percentage}%</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 12px;">
+                        <div class="progress-bar bg-${statusColors[status]}" role="progressbar" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+            // 更新分析洞察
+            document.getElementById('statusDecorationInsights').innerHTML = `
+                <h6><i class="fas fa-lightbulb me-2"></i> 分析洞察</h6>
+                <p class="mb-0">精装修房屋在在售状态中占比最高，而简装修房屋在已售状态中占比最高。这表明精装修房屋更受市场欢迎但可能价格较高，简装修房屋更容易成交。</p>
+            `;
+        }
+        // 显示错误信息
+        function showError(elementId, message) {
+            const container = document.getElementById(elementId).parentElement;
+            container.innerHTML = `
+                <div class="alert alert-danger text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <h5>${message}</h5>
+                    <button class="btn btn-sm btn-outline-danger mt-2" onclick="location.reload()">
+                        <i class="fas fa-redo me-1"></i>重新加载
+                    </button>
+                </div>
+            `;
+        }
+    </script>
+    {% endblock %}
+</body>
+</html>

@@ -1,0 +1,679 @@
+{% extends "base.html" %}
+
+{% block title %}房屋详情分析 - 链家网房屋数据分析系统{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-color: #3498db;
+        --secondary-color: #2c3e50;
+        --accent-color: #e74c3c;
+        --light-color: #f8f9fa;
+        --dark-color: #343a40;
+    }
+
+    .content {
+        background-color: #f5f7fa;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+        border: none;
+        margin-bottom: 25px;
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 15px 20px;
+        font-weight: 600;
+    }
+
+    .chart-container {
+        height: 500px;
+        width: 100%;
+        margin-top: 20px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        padding: 15px;
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s ease;
+        margin-bottom: 20px;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .stats-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin: 10px 0;
+    }
+
+    .stats-label {
+        font-size: 1rem;
+        color: var(--dark-color);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .analysis-section {
+        margin-bottom: 40px;
+    }
+
+    .section-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: var(--secondary-color);
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--primary-color);
+        display: inline-block;
+    }
+
+    .loading-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        font-size: 1.2rem;
+        color: var(--primary-color);
+    }
+
+    .loading-spinner {
+        width: 3rem;
+        height: 3rem;
+        margin-right: 10px;
+    }
+
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .chart-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--secondary-color);
+    }
+
+    .filter-section {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+    }
+
+    .row-equal-height {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .row-equal-height > [class*='col-'] {
+        display: flex;
+        flex-direction: column;
+    }
+</style>
+
+<div class="content">
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-home me-2"></i>房屋详情分析</h5>
+        </div>
+        <div class="card-body">
+            <!-- 概览统计卡片 -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-icon">
+                            <i class="fas fa-map-marker-alt fa-2x text-primary"></i>
+                        </div>
+                        <div class="stats-value" id="total-regions">0</div>
+                        <div class="stats-label">区域数量</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-icon">
+                            <i class="fas fa-building fa-2x text-success"></i>
+                        </div>
+                        <div class="stats-value" id="total-houses">0</div>
+                        <div class="stats-label">房屋总数</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-icon">
+                            <i class="fas fa-paint-roller fa-2x text-danger"></i>
+                        </div>
+                        <div class="stats-value" id="decoration-types">0</div>
+                        <div class="stats-label">装修类型</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-icon">
+                            <i class="fas fa-bed fa-2x text-info"></i>
+                        </div>
+                        <div class="stats-value" id="house-types">0</div>
+                        <div class="stats-label">户型种类</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row row-equal-height">
+                <!-- 区域分布分析 -->
+                <div class="col-md-6">
+                    <div class="analysis-section">
+                        <h4 class="section-title"><i class="fas fa-map-marked-alt me-2"></i>区域分布</h4>
+                        <div class="chart-container">
+                            <div class="loading-indicator">
+                                <div class="spinner-border text-primary loading-spinner" role="status"></div>
+                                <span>正在加载区域分布数据...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 户型分布分析 -->
+                <div class="col-md-6">
+                    <div class="analysis-section">
+                        <h4 class="section-title"><i class="fas fa-door-open me-2"></i>户型分布</h4>
+                        <div class="chart-container">
+                            <div class="loading-indicator">
+                                <div class="spinner-border text-primary loading-spinner" role="status"></div>
+                                <span>正在加载户型分布数据...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row row-equal-height">
+                <!-- 装修类型分布 -->
+                <div class="col-md-6">
+                    <div class="analysis-section">
+                        <h4 class="section-title"><i class="fas fa-paint-roller me-2"></i>装修类型分布</h4>
+                        <div class="chart-container">
+                            <div class="loading-indicator">
+                                <div class="spinner-border text-primary loading-spinner" role="status"></div>
+                                <span>正在加载装修类型数据...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 销售状态分布 -->
+                <div class="col-md-6">
+                    <div class="analysis-section">
+                        <h4 class="section-title"><i class="fas fa-tag me-2"></i>销售状态分布</h4>
+                        <div class="chart-container">
+                            <div class="loading-indicator">
+                                <div class="spinner-border text-primary loading-spinner" role="status"></div>
+                                <span>正在加载销售状态数据...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 价格与区域关系 -->
+            <div class="analysis-section">
+                <h4 class="section-title"><i class="fas fa-chart-bar me-2"></i>价格与区域关系</h4>
+                <div class="chart-container">
+                    <div class="loading-indicator">
+                        <div class="spinner-border text-primary loading-spinner" role="status"></div>
+                        <span>正在加载价格区域数据...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入ECharts -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // 初始化图表容器
+        const regionChartEl = document.querySelectorAll('.chart-container')[0];
+        const typeChartEl = document.querySelectorAll('.chart-container')[1];
+        const decorationChartEl = document.querySelectorAll('.chart-container')[2];
+        const statusChartEl = document.querySelectorAll('.chart-container')[3];
+        const priceRegionChartEl = document.querySelectorAll('.chart-container')[4];
+
+        // 初始化图表实例
+        const regionChart = echarts.init(regionChartEl);
+        const typeChart = echarts.init(typeChartEl);
+        const decorationChart = echarts.init(decorationChartEl);
+        const statusChart = echarts.init(statusChartEl);
+        const priceRegionChart = echarts.init(priceRegionChartEl);
+
+        // 概览统计
+        let totalHouses = 0;
+        let totalRegions = 0;
+        let decorationTypes = 0;
+        let houseTypes = 0;
+
+        // 加载区域分布数据
+        fetch("{{ url_for('page.region_distribution') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const chartData = data.data;
+
+                    // 更新概览统计
+                    totalRegions = chartData.length;
+                    document.getElementById('total-regions').textContent = totalRegions;
+
+                    // 配置图表选项
+                    const option = {
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: '{a} <br/>{b}: {c} ({d}%)'
+                        },
+                        legend: {
+                            orient: 'vertical',
+                            right: 10,
+                            top: 'center',
+                            type: 'scroll'
+                        },
+                        series: [
+                            {
+                                name: '区域分布',
+                                type: 'pie',
+                                radius: ['40%', '70%'],
+                                avoidLabelOverlap: false,
+                                itemStyle: {
+                                    borderRadius: 10,
+                                    borderColor: '#fff',
+                                    borderWidth: 2
+                                },
+                                label: {
+                                    show: false,
+                                    position: 'center'
+                                },
+                                emphasis: {
+                                    label: {
+                                        show: true,
+                                        fontSize: '18',
+                                        fontWeight: 'bold'
+                                    }
+                                },
+                                labelLine: {
+                                    show: false
+                                },
+                                data: chartData
+                            }
+                        ]
+                    };
+
+                    regionChart.setOption(option);
+                    regionChartEl.querySelector('.loading-indicator').style.display = 'none';
+                } else {
+                    regionChartEl.querySelector('.loading-indicator').innerHTML =
+                        `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('区域分布数据获取失败:', error);
+                regionChartEl.querySelector('.loading-indicator').innerHTML =
+                    `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>数据加载失败，请重试</div>`;
+            });
+
+        // 加载户型分布数据
+        fetch("{{ url_for('page.hourse_type_distribution') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const chartData = data.data;
+
+                    // 更新概览统计
+                    houseTypes = chartData.length;
+                    document.getElementById('house-types').textContent = houseTypes;
+
+                    // 配置图表选项
+                    const option = {
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: '{a} <br/>{b}: {c} ({d}%)'
+                        },
+                        legend: {
+                            orient: 'vertical',
+                            right: 10,
+                            top: 'center',
+                            type: 'scroll'
+                        },
+                        series: [
+                            {
+                                name: '户型分布',
+                                type: 'pie',
+                                radius: ['40%', '70%'],
+                                avoidLabelOverlap: false,
+                                itemStyle: {
+                                    borderRadius: 10,
+                                    borderColor: '#fff',
+                                    borderWidth: 2
+                                },
+                                label: {
+                                    show: false,
+                                    position: 'center'
+                                },
+                                emphasis: {
+                                    label: {
+                                        show: true,
+                                        fontSize: '18',
+                                        fontWeight: 'bold'
+                                    }
+                                },
+                                labelLine: {
+                                    show: false
+                                },
+                                data: chartData
+                            }
+                        ]
+                    };
+
+                    typeChart.setOption(option);
+                    typeChartEl.querySelector('.loading-indicator').style.display = 'none';
+                } else {
+                    typeChartEl.querySelector('.loading-indicator').innerHTML =
+                        `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('户型分布数据获取失败:', error);
+                typeChartEl.querySelector('.loading-indicator').innerHTML =
+                    `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>数据加载失败，请重试</div>`;
+            });
+
+        // 加载装修类型分布数据
+        fetch("{{ url_for('page.decoration_distribution') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const chartData = data.data;
+
+                    // 更新概览统计
+                    decorationTypes = chartData.length;
+                    document.getElementById('decoration-types').textContent = decorationTypes;
+
+                    // 配置图表选项
+                    const option = {
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: '{a} <br/>{b}: {c} ({d}%)'
+                        },
+                        legend: {
+                            orient: 'vertical',
+                            right: 10,
+                            top: 'center',
+                            type: 'scroll'
+                        },
+                        series: [
+                            {
+                                name: '装修类型',
+                                type: 'pie',
+                                radius: ['40%', '70%'],
+                                avoidLabelOverlap: false,
+                                itemStyle: {
+                                    borderRadius: 10,
+                                    borderColor: '#fff',
+                                    borderWidth: 2
+                                },
+                                label: {
+                                    show: false,
+                                    position: 'center'
+                                },
+                                emphasis: {
+                                    label: {
+                                        show: true,
+                                        fontSize: '18',
+                                        fontWeight: 'bold'
+                                    }
+                                },
+                                labelLine: {
+                                    show: false
+                                },
+                                data: chartData
+                            }
+                        ]
+                    };
+
+                    decorationChart.setOption(option);
+                    decorationChartEl.querySelector('.loading-indicator').style.display = 'none';
+                } else {
+                    decorationChartEl.querySelector('.loading-indicator').innerHTML =
+                        `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('装修类型数据获取失败:', error);
+                decorationChartEl.querySelector('.loading-indicator').innerHTML =
+                    `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>数据加载失败，请重试</div>`;
+            });
+
+        // 加载销售状态分布数据
+        fetch("{{ url_for('page.sale_status_distribution') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const chartData = data.data;
+
+                    // 计算房屋总数
+                    totalHouses = chartData.reduce((sum, item) => sum + item.value, 0);
+                    document.getElementById('total-houses').textContent = totalHouses;
+
+                    // 配置图表选项
+                    const option = {
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: '{a} <br/>{b}: {c} ({d}%)'
+                        },
+                        legend: {
+                            orient: 'vertical',
+                            right: 10,
+                            top: 'center',
+                            type: 'scroll'
+                        },
+                        series: [
+                            {
+                                name: '销售状态',
+                                type: 'pie',
+                                radius: ['40%', '70%'],
+                                avoidLabelOverlap: false,
+                                itemStyle: {
+                                    borderRadius: 10,
+                                    borderColor: '#fff',
+                                    borderWidth: 2
+                                },
+                                label: {
+                                    show: false,
+                                    position: 'center'
+                                },
+                                emphasis: {
+                                    label: {
+                                        show: true,
+                                        fontSize: '18',
+                                        fontWeight: 'bold'
+                                    }
+                                },
+                                labelLine: {
+                                    show: false
+                                },
+                                data: chartData
+                            }
+                        ]
+                    };
+
+                    statusChart.setOption(option);
+                    statusChartEl.querySelector('.loading-indicator').style.display = 'none';
+                } else {
+                    statusChartEl.querySelector('.loading-indicator').innerHTML =
+                        `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('销售状态数据获取失败:', error);
+                statusChartEl.querySelector('.loading-indicator').innerHTML =
+                    `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>数据加载失败，请重试</div>`;
+            });
+
+        // 加载价格与区域关系数据
+        fetch("{{ url_for('page.price_region') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const chartData = data.data;
+
+                    // 准备箱线图数据
+                    const regions = [];
+                    const boxData = [];
+                    const outlierData = [];
+
+                    chartData.forEach(item => {
+                        regions.push(item.region);
+
+                        // 箱线图数据 [min, Q1, median, Q3, max]
+                        boxData.push([
+                            item.min,
+                            item.q1,
+                            item.median,
+                            item.q3,
+                            item.max
+                        ]);
+
+                        // 异常值数据
+                        item.outliers.forEach(outlier => {
+                            outlierData.push([
+                                item.region,
+                                outlier
+                            ]);
+                        });
+                    });
+
+                    // 配置图表选项
+                    const option = {
+                        tooltip: {
+                            trigger: 'item',
+                            axisPointer: {
+                                type: 'shadow'
+                            },
+                            formatter: function(params) {
+                                if (params.seriesType === 'boxplot') {
+                                    const data = chartData[params.dataIndex];
+                                    return `
+                                        <b>${data.region}</b><br/>
+                                        房屋数量: ${data.count}<br/>
+                                        最低价: ${data.min.toFixed(2)}<br/>
+                                        下四分位: ${data.q1.toFixed(2)}<br/>
+                                        中位数: ${data.median.toFixed(2)}<br/>
+                                        上四分位: ${data.q3.toFixed(2)}<br/>
+                                        最高价: ${data.max.toFixed(2)}
+                                    `;
+                                } else {
+                                    return `区域: ${params.value[0]}<br/>价格: ${params.value[1]}`;
+                                }
+                            }
+                        },
+                        grid: {
+                            left: '10%',
+                            right: '10%',
+                            bottom: '15%',
+                            top: '10%'
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: regions,
+                            axisLabel: {
+                                rotate: 45,
+                                interval: 0
+                            },
+                            boundaryGap: true,
+                            nameGap: 30,
+                            splitArea: {
+                                show: false
+                            },
+                            splitLine: {
+                                show: false
+                            }
+                        },
+                        yAxis: {
+                            type: 'value',
+                            name: '价格 (元/㎡)',
+                            splitArea: {
+                                show: true
+                            }
+                        },
+                        series: [
+                            {
+                                name: 'boxplot',
+                                type: 'boxplot',
+                                data: boxData,
+                                tooltip: {
+                                    formatter: function(param) {
+                                        return [
+                                            '区域: ' + regions[param.dataIndex] + '<br/>',
+                                            '上边界: ' + param.data[4] + '<br/>',
+                                            '上四分位数: ' + param.data[3] + '<br/>',
+                                            '中位数: ' + param.data[2] + '<br/>',
+                                            '下四分位数: ' + param.data[1] + '<br/>',
+                                            '下边界: ' + param.data[0]
+                                        ].join('');
+                                    }
+                                }
+                            },
+                            {
+                                name: 'outlier',
+                                type: 'scatter',
+                                data: outlierData,
+                                symbolSize: 6,
+                                itemStyle: {
+                                    color: '#e74c3c'
+                                }
+                            }
+                        ]
+                    };
+
+                    priceRegionChart.setOption(option);
+                    priceRegionChartEl.querySelector('.loading-indicator').style.display = 'none';
+                } else {
+                    priceRegionChartEl.querySelector('.loading-indicator').innerHTML =
+                        `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('价格区域数据获取失败:', error);
+                priceRegionChartEl.querySelector('.loading-indicator').innerHTML =
+                    `<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>数据加载失败，请重试</div>`;
+            });
+
+        // 窗口大小变化时重新调整图表大小
+        window.addEventListener('resize', function() {
+            regionChart.resize();
+            typeChart.resize();
+            decorationChart.resize();
+            statusChart.resize();
+            priceRegionChart.resize();
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题与刷新按钮 -->
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1 class="page-title">链家网房屋数据分析系统</h1>
+                <p class="text-muted">数据分析与市场洞察</p>
+            </div>
+            <div class="col-auto">
+                <a href="/home" class="btn btn-primary">
+                    <i class="fas fa-sync-alt me-2"></i>刷新数据
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h5 class="text-white-50 mb-2">房屋总数</h5>
+                            <h3 class="mb-0">{{ total_houses }}</h3>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-home fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h5 class="text-white-50 mb-2">区域数量</h5>
+                            <h3 class="mb-0">{{ region_count }}</h3>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-map-marker-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h5 class="text-white-50 mb-2">平均价格</h5>
+                            <h3 class="mb-0">{{ avg_price }} 元/㎡</h3>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-tag fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-xl-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h5 class="text-white-50 mb-2">最新开盘</h5>
+                            <h3 class="mb-0">{{ recent_houses|length }}</h3>
+                        </div>
+                        <div class="ms-3">
+                            <i class="fas fa-calendar-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调试信息 -->
+    <div class="alert alert-info">
+        <h5>调试信息</h5>
+        <p>房屋总数: {{ total_houses }}</p>
+        <p>区域数量: {{ region_count }}</p>
+        <p>平均价格: {{ avg_price }}</p>
+        <p>最新开盘数量: {{ recent_houses|length }}</p>
+        <p>热门区域: {{ region_counts }}</p>
+        <p>装修类型: {{ decoration_counts }}</p>
+        <p>价格分布: {{ price_distribution }}</p>
+    </div>
+
+    <!-- 最新开盘项目 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">最新开盘项目</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_houses %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>项目名称</th>
+                                    <th>区域</th>
+                                    <th>价格</th>
+                                    <th>面积范围</th>
+                                    <th>开盘时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for house in recent_houses %}
+                                <tr>
+                                    <td>{{ house.id }}</td>
+                                    <td>{{ house.title }}</td>
+                                    <td>{{ house.region }}</td>
+                                    <td>{{ house.price }}</td>
+                                    <td>{{ house.area_range }}</td>
+                                    <td>{{ house.open_date }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>暂无最新开盘项目数据
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("页面加载完成");
+});
+</script>
+{% endblock %}

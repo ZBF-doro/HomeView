@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}个人资料 - 房屋数据分析系统{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="h3 mb-0">个人资料</h1>
+    <p class="text-muted">查看和编辑你的个人信息</p>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" class="row g-3">
+            <div class="col-md-6">
+                <label for="username" class="form-label">用户名</label>
+                <input type="text" class="form-control" id="username" name="username" value="{{ user.user_name }}" required>
+                <div class="form-text">用户名用于登录系统</div>
+            </div>
+            <div class="col-md-6">
+                <label for="password" class="form-label">密码</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="留空表示不修改密码">
+                <div class="form-text">修改密码请输入新密码</div>
+            </div>
+            <div class="col-md-6">
+                <label for="confirm_password" class="form-label">确认密码</label>
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="再次输入新密码">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">保存修改</button>
+                <a href="{{ url_for('page.home') }}" class="btn btn-secondary">返回首页</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

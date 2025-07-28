@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}房屋数据分析系统{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #3051d3;
+            --secondary: #7a6fbe;
+            --success: #34c38f;
+            --warning: #ffab00;
+            --danger: #f46a6a;
+            --info: #50a5f1;
+            --light-bg: #f8f9fc;
+            --dark: #212529;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--dark);
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background: linear-gradient(120deg, var(--primary), var(--secondary));
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 0.8rem 1rem;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1030;
+        }
+
+        .sidebar {
+            background: white;
+            box-shadow: 0 0 35px rgba(49, 57, 66, 0.1);
+            height: calc(100vh - 70px);
+            position: fixed;
+            top: 70px;
+            left: 0;
+            width: 250px;
+            z-index: 1020;
+            overflow-y: auto;
+            transition: all 0.3s;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            margin-top: 70px;
+            transition: all 0.3s;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #6c757d;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .sidebar-menu li a:hover,
+        .sidebar-menu li a.active {
+            background-color: rgba(48, 81, 211, 0.05);
+            color: var(--primary);
+            border-left-color: var(--primary);
+        }
+
+        .sidebar-menu li a i {
+            margin-right: 10px;
+            width: 24px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            background: white;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card {
+            border-left: 4px solid;
+        }
+
+        .stat-card.primary {
+            border-left-color: var(--primary);
+        }
+
+        .stat-card.success {
+            border-left-color: var(--success);
+        }
+
+        .stat-card.warning {
+            border-left-color: var(--warning);
+        }
+
+        .stat-card.danger {
+            border-left-color: var(--danger);
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        .recent-prediction {
+            border-left: 4px solid;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 5px 5px 0;
+            background: rgba(48, 81, 211, 0.03);
+        }
+
+        .recent-prediction.up {
+            border-left-color: var(--success);
+        }
+
+        .recent-prediction.down {
+            border-left-color: var(--danger);
+        }
+
+        .hot-community-row:hover {
+            background-color: rgba(48, 81, 211, 0.05);
+            cursor: pointer;
+        }
+
+        .trend-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .trend-badge.up {
+            background-color: rgba(52, 195, 143, 0.2);
+            color: var(--success);
+        }
+
+        .trend-badge.down {
+            background-color: rgba(244, 106, 106, 0.2);
+            color: var(--danger);
+        }
+
+        .page-header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+
+        .footer {
+            background: white;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 20px 0;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+
+        /* 修复下拉菜单问题 */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.1);
+            z-index: 1;
+            border-radius: 8px;
+            padding: 10px 0;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 8px 20px;
+            color: #333;
+            text-decoration: none;
+            display: block;
+            transition: background-color 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <button class="btn btn-sm text-white" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <a class="navbar-brand mx-2" href="/">
+                <i class="fas fa-home me-2"></i>
+                <strong>房屋数据分析系统</strong>
+            </a>
+
+            <div class="d-flex align-items-center ms-auto">
+                <!-- 全局搜索表单 -->
+                <div class="input-group me-3 d-none d-md-flex">
+                    <form method="GET" action="{{ url_for('page.data_operation') }}" class="d-flex">
+                        <input type="text" name="keyword" class="form-control form-control-sm"
+                               placeholder="搜索小区、区域或关键词..." value="{{ request.args.get('keyword', '') }}">
+                        <button class="btn btn-light btn-sm" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="dropdown">
+                    <a class="nav-link dropdown-toggle text-white" href="#" role="button" id="userDropdown">
+                        <i class="fas fa-user-circle me-1"></i>
+                        <span id="username">{{ session.get('username', '游客') }}</span>
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="userDropdown">
+                        {% if session.get('username') and session.get('auth_token') %}
+                        <li><a class="dropdown-item" href="{{ url_for('page.profile') }}"><i class="fas fa-user me-2"></i>个人资料</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('page.history') }}"><i class="fas fa-history me-2"></i>历史记录</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{{ url_for('user.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>退出登录</a></li>
+                        {% else %}
+                        <li><a class="dropdown-item" href="{{ url_for('user.login') }}"><i class="fas fa-sign-in-alt me-2"></i>登录</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('user.register') }}"><i class="fas fa-user-plus me-2"></i>注册</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <ul class="sidebar-menu">
+            <li>
+                <a href="/home" class="{% if active_page == 'index' %}active{% endif %}">
+                    <i class="fas fa-home"></i>
+                    <span>首页</span>
+                </a>
+            </li>
+            <li>
+                <a href="/data_operation" class="{% if active_page == 'data_operation' %}active{% endif %}">
+                    <i class="fas fa-database"></i>
+                    <span>数据操作</span>
+                </a>
+            </li>
+            <li>
+                <a href="/price_analysis" class="{% if active_page == 'price_analysis' %}active{% endif %}">
+                    <i class="fas fa-chart-line"></i>
+                    <span>房屋价格分析</span>
+                </a>
+            </li>
+            <li>
+                <a href="/detail_analysis" class="{% if active_page == 'detail_analysis' %}active{% endif %}">
+                    <i class="fas fa-info-circle"></i>
+                    <span>房屋详情分析</span>
+                </a>
+            </li>
+            <li>
+                <a href="/type_analysis" class="{% if active_page == 'type_analysis' %}active{% endif %}">
+                    <i class="fas fa-th-large"></i>
+                    <span>房屋类型分析</span>
+                </a>
+            </li>
+            <li>
+                <a href="/other_analysis" class="{% if active_page == 'other_analysis' %}active{% endif %}">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>房屋其他分析</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <div class="container-fluid">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <script>
+        // 侧边栏切换
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('active');
+        });
+
+        // 用户菜单切换
+        document.getElementById('userDropdown').addEventListener('click', function(e) {
+            e.preventDefault();
+            const menu = this.nextElementSibling;
+            menu.classList.toggle('show');
+        });
+
+        // 点击其他地方关闭菜单
+        document.addEventListener('click', function(e) {
+            const userMenu = document.querySelector('.dropdown-menu');
+            if (!e.target.closest('.dropdown') && userMenu && userMenu.classList.contains('show')) {
+                userMenu.classList.remove('show');
+            }
+        });
+
+        // 自动设置侧边栏激活状态
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
+
+            sidebarLinks.forEach(link => {
+                const linkPath = link.getAttribute('href');
+                if (currentPath === linkPath) {
+                    sidebarLinks.forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
